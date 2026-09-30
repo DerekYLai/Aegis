@@ -13,7 +13,28 @@ def add_finding(finding):
     if finding not in findings:
         findings.append(finding)
 
+def log_event(message, level="INFO"):
+    logs_folder = os.path.join(
+        os.path.dirname(__file__),
+        "logs"
+    )
+
+    os.makedirs(logs_folder, exist_ok=True)
+
+    log_path = os.path.join(
+        logs_folder,
+        "aegis.log"
+    )
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(log_path, "a") as log_file:
+        log_file.write(
+            f"{timestamp} | {level} | {message}\n"
+        )
+
 def get_system_info():
+    log_event("System information scan started")
     print("\n" + "=" * 50)
     print("SYSTEM INFORMATION")
     print("=" * 50)
@@ -44,9 +65,10 @@ def get_system_info():
         print(f"Current User     : {os.environ.get('USERNAME', 'Unknown')}")
 
     print(f"Scan Time        : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
+    log_event("System information scan completed")
 
 def get_processes():
+    log_event("Process analysis started")
     print("\nPROCESS SECURITY ANALYSIS")
     print("=" * 100)
 
@@ -122,8 +144,10 @@ def get_processes():
             continue
 
     print("\nProcess analysis complete.")
+    log_event("Process analysis completed")
 
 def security_scan():
+    log_event("Security scan started")
     print("\nSECURITY SCAN")
     print("=" * 50)
 
@@ -196,6 +220,7 @@ def security_scan():
     print("\nSecurity scan complete.")
 
 def network_scan():
+    log_event("Network security scan started")
     print("\nNETWORK SECURITY SCAN")
     print("=" * 70)
 
@@ -261,9 +286,46 @@ def network_scan():
         print("\nNo review-level ports detected.")
 
     print("\nNetwork scan complete.\n")
+    log_event("Network security scan completed")
+
+def get_recommendation(finding):
+    log_event(f"Generating recommendation for finding: {finding['issue']}")
+    issue = finding["issue"].lower()
+    finding_type = finding["type"]
+
+    if finding_type == "Firewall":
+        return "Enable Windows Firewall for all network profiles."
+
+    if finding_type == "Antivirus":
+        if "real-time" in issue:
+            return "Enable Windows Defender real-time protection."
+        return "Enable Windows Defender antivirus protection."
+
+    if finding_type == "Network":
+        return "Verify that this service is required and restrict access if it is not needed."
+
+    if finding_type == "Malware":
+        return "Investigate the file, isolate it if necessary, and remove it only after confirming it is unsafe."
+
+    if finding_type == "Process":
+        if "cpu" in issue:
+            return "Identify why the process is using high CPU and investigate if the usage is unexpected."
+
+        if "memory" in issue:
+            return "Identify why the process is using high memory and investigate if the usage is unexpected."
+
+        if "temporary" in issue:
+            return "Verify that the process is legitimate and investigate why it is running from a temporary directory."
+
+    recommendation = "Investigate this finding and determine whether additional action is required."
+    log_event(f"Recommendation generated for finding: {finding['issue']}: {recommendation}")
+    return recommendation
+
+
+
 def show_findings():
     print("\nAEGIS SECURITY FINDINGS")
-    print("=" * 50)
+    print("=" * 60)
 
     if not findings:
         print("No security findings detected.")
@@ -275,8 +337,62 @@ def show_findings():
         print(f"Issue: {finding['issue']}")
         print(f"Severity: {finding['severity']}")
         print(f"Details: {finding['details']}")
+        print(f"Recommendation: {get_recommendation(finding)}")
+
+def generate_report():
+    print("\nGENERATING SECURITY REPORT")
+    print("=" * 60)
+
+    reports_folder = os.path.join(
+        os.path.dirname(__file__),
+        "reports"
+    )
+
+    os.makedirs(reports_folder, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    report_name = f"aegis_report_{timestamp}.txt"
+
+    report_path = os.path.join(
+        reports_folder,
+        report_name
+    )
+
+    with open(report_path, "w") as report:
+        report.write("AEGIS SECURITY REPORT\n")
+        report.write("=" * 60 + "\n")
+        report.write(
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        )
+        report.write(f"Computer: {socket.gethostname()}\n")
+        report.write(f"Operating System: {platform.system()} {platform.release()}\n")
+        report.write(f"Total Findings: {len(findings)}\n")
+
+        report.write("\n" + "=" * 60 + "\n")
+        report.write("SECURITY FINDINGS\n")
+        report.write("=" * 60 + "\n")
+
+        if not findings:
+            report.write("\nNo security findings detected.\n")
+
+        for number, finding in enumerate(findings, start=1):
+            report.write(f"\nFinding #{number}\n")
+            report.write(f"Type: {finding['type']}\n")
+            report.write(f"Issue: {finding['issue']}\n")
+            report.write(f"Severity: {finding['severity']}\n")
+            report.write(f"Details: {finding['details']}\n")
+            report.write(
+                f"Recommendation: {get_recommendation(finding)}\n"
+            )
+
+    log_event("Security report generated successfully")
+    log_event(f"Saved to: {report_path}")
+    print("Security report generated successfully.")
+    print(f"Saved to: {report_path}")
 
 def malware_scan():
+    log_event("Malware signature scan started")
     print("\nMALWARE SIGNATURE SCAN")
     print("=" * 60)
 
@@ -361,10 +477,14 @@ def malware_scan():
         print("No known signature matches detected.")
 
     print("\nMalware scan complete.")
+    log_event("Malware signature scan completed")
 
 
 def main():
+    log_event("Aegis started")
+
     while True:
+        print("\nAEGIS")
         print("\nAEGIS")
         print("[1] System Information")
         print("[2] Process Analysis")
@@ -372,7 +492,9 @@ def main():
         print("[4] Network Scan")
         print("[5] Malware Scan")
         print("[6] Show Findings")
-        print("[7] Exit")
+        print("[7] generate report")
+        print("[8] Exit")
+        
 
         choice = input("\nSelect an option: ")
 
@@ -397,7 +519,11 @@ def main():
             show_findings()
 
         elif choice == "7":
-            print("SEVEN")
+            generate_report()
+
+        elif choice == "8":
+            log_event("Aegis exited")
+            print("Exiting Aegis.")
             break
 
         else:
